@@ -89,6 +89,7 @@ private:
 
     bool setupAudioPipeline();
     bool setupVideoPipeline();
+    bool setupVaapiPipeline();
 
     void enableFactory(const gchar *name, gboolean enable);
 

@@ -193,11 +193,20 @@ GstElement *GstSinkWidget::createElement()
 
     g_object_ref(m_element);
 
-    GstCaps *caps = gst_caps_new_simple("video/x-raw-rgb",
-                                        "red_mask", G_TYPE_INT, 0xff00,
-                                        "blue_mask", G_TYPE_INT, 0xff000000,
-                                        "green_mask", G_TYPE_INT, 0xff0000,
-                                        NULL);
+    GstStructure *struct1 = gst_structure_new("video/x-raw-rgb",
+                                               "red_mask", G_TYPE_INT, 0xff00,
+                                               "blue_mask", G_TYPE_INT, 0xff000000,
+                                               "green_mask", G_TYPE_INT, 0xff0000,
+                                               NULL);
+    GstStructure *struct2 = gst_structure_empty_new ("video/x-vaapi-surface");
+
+//    GstCaps *caps = gst_caps_new_simple("video/x-raw-rgb",
+//                                        "red_mask", G_TYPE_INT, 0xff00,
+//                                        "blue_mask", G_TYPE_INT, 0xff000000,
+//                                        "green_mask", G_TYPE_INT, 0xff0000,
+//                                        NULL);
+
+    GstCaps *caps = gst_caps_new_full(struct1, struct2, NULL);
     gst_app_sink_set_caps(m_element, caps);
     gst_caps_unref(caps);
 

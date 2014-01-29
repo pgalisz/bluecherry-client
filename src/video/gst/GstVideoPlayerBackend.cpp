@@ -179,8 +179,16 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
         return false;
     }
 
-    if (!setupVideoPipeline() || !setupAudioPipeline())
-        return false;
+    if (m_useHardwareDecoding)
+    {
+        if (!setupVaapiPipeline() || !setupAudioPipeline())
+            return false;
+    }
+    else
+    {
+        if (!setupVideoPipeline() || !setupAudioPipeline())
+            return false;
+    }
 
     m_playbackSpeed = 1.0;
 
@@ -196,6 +204,50 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
     /* Move the pipeline into the PLAYING state. This call may block for a very long time
      * (up to several seconds), because it will block until the pipeline has completed that move. */
     gst_element_set_state(m_pipeline, GST_STATE_READY);
+    return true;
+}
+
+bool GstVideoPlayerBackend::setupVaapiPipeline()
+{
+    GstElement *videoQueue = gst_element_factory_make ("queue", "videoQueue");
+    if (!videoQueue)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("videoQueue")));
+        return false;
+    }
+
+    /* Decoder */
+    GstElement *videoDecoder = gst_element_factory_make("vaapidecode", "videoDecoder");
+    if (!videoDecoder)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("videoDecoder")));
+        return false;
+    }
+
+    GstElement *vaapisink = gst_element_factory_make("vaapisink", "videosink1");
+    if (!vaapisink)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("videosink1")));
+        return false;
+    }
+
+
+    gst_bin_add_many(GST_BIN(m_pipeline), videoQueue, videoDecoder, vaapisink, NULL);
+
+    if (!gst_element_link(videoQueue, videoDecoder))
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("link decoder")));
+        return false;
+    }
+
+    if (!gst_element_link(videoDecoder, vaapisink))
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("link sink")));
+        return false;
+    }
+
+    m_videoQueue = videoQueue;
+
     return true;
 }
 
