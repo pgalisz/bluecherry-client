@@ -28,6 +28,8 @@ class VideoHttpBuffer;
 
 typedef struct _GstDecodeBin GstDecodeBin;
 
+class QWidget;
+
 class GstVideoPlayerBackend : public VideoPlayerBackend
 {
     Q_OBJECT
@@ -54,6 +56,8 @@ public:
     virtual VideoHttpBuffer *videoBuffer() const { return m_videoBuffer; }
 
     virtual void setHardwareDecodingEnabled(bool enable);
+
+    void setT(QWidget *t) { t1 = t; }
 
 public slots:
     virtual bool start(const QUrl &url);
@@ -89,6 +93,7 @@ private:
 
     bool setupAudioPipeline();
     bool setupVideoPipeline();
+    bool setupVaapiPipeline();
 
     void enableFactory(const gchar *name, gboolean enable);
 
@@ -104,6 +109,7 @@ private:
     static void staticDemuxerPadReady(GstElement *element, GstPad *pad, gpointer data);
     static void staticDemuxerNoMorePads(GstElement *demux, gpointer user_data);
 
+    QWidget *t1;
 };
 
 #endif // GST_VIDEO_PLAYER_BACKEND_H

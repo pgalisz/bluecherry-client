@@ -20,6 +20,7 @@ include_directories (${GSTREAMER_0_10_INCLUDE_DIRS})
 
 list (APPEND bluecherry_client_LIBRARIES
     ${GSTREAMER_0_10_LIBRARIES}
+    "gstinterfaces-0.10"
 )
 
 if (UNIX AND NOT APPLE)
