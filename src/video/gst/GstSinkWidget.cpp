@@ -193,7 +193,7 @@ GstElement *GstSinkWidget::createElement()
 
     g_object_ref(m_element);
 
-    GstCaps *caps = gst_caps_new_simple("video/x-raw-rgb",
+    GstCaps *caps = gst_caps_new_simple("video/x-raw",
                                         "red_mask", G_TYPE_INT, 0xff00,
                                         "blue_mask", G_TYPE_INT, 0xff000000,
                                         "green_mask", G_TYPE_INT, 0xff0000,
@@ -204,7 +204,8 @@ GstElement *GstSinkWidget::createElement()
     GstAppSinkCallbacks callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.eos = &GstSinkWidget::wrapEos;
-    callbacks.new_buffer = &GstSinkWidget::wrapNewBuffer;
+    callbacks.new_sample = &GstSinkWidget::wrapNewBuffer;
+//    callbacks.new_buffer = &GstSinkWidget::wrapNewBuffer;
     callbacks.new_preroll = &GstSinkWidget::wrapNewPreroll;
     gst_app_sink_set_callbacks(m_element, &callbacks, this, NULL);
 
@@ -255,7 +256,10 @@ QImage GstSinkWidget::currentFrame()
     if (!buffer)
         return QImage();
 
-    QImage result = QImage(GST_BUFFER_DATA(buffer), m_frameWidth, m_frameHeight, QImage::Format_RGB32).copy();
+    GstMapInfo map;
+    gst_buffer_map (buffer, &map, GST_MAP_READ);
+    QImage result = QImage(map.data, m_frameWidth, m_frameHeight, QImage::Format_RGB32).copy();
+    gst_buffer_unmap (buffer,&map);
     gst_buffer_unref(buffer);
 
     return result;
@@ -285,7 +289,11 @@ bool GstSinkWidget::eventFilter(QObject *obj, QEvent *ev)
         return true;
     }
 
-    QImage frame = QImage(GST_BUFFER_DATA(buffer), m_frameWidth, m_frameHeight, QImage::Format_RGB32);
+
+    GstMapInfo map;
+    gst_buffer_map (buffer, &map, GST_MAP_READ);
+    QImage frame = QImage(map.data, m_frameWidth, m_frameHeight, QImage::Format_RGB32);
+    gst_buffer_unmap (buffer,&map);
 
     QRect r = rect();
     p.eraseRect(r);
@@ -330,7 +338,7 @@ void GstSinkWidget::updateFrame(GstBuffer *buffer)
     if (m_frameWidth < 0 || m_frameHeight < 0)
         return;
 
-    Q_ASSERT(buffer && GST_BUFFER_DATA(buffer));
+//    Q_ASSERT(buffer && GST_BUFFER_DATA(buffer));
 
     gst_buffer_ref(buffer);
     m_frameLock.lock();
@@ -345,13 +353,14 @@ void GstSinkWidget::updateFrame(GstBuffer *buffer)
 GstFlowReturn GstSinkWidget::newPreroll()
 {
     if (!m_element)
-        return GST_FLOW_UNEXPECTED;
+        return GST_FLOW_EOS;
 
-    GstBuffer *buffer = gst_app_sink_pull_preroll(m_element);
+    GstSample *sample = gst_app_sink_pull_preroll(m_element);
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
     if (!buffer)
         return GST_FLOW_ERROR;
 
-    GstCaps *caps = GST_BUFFER_CAPS(buffer);
+    GstCaps *caps = gst_sample_get_caps(sample);
     Q_ASSERT(caps);
 
     if (!gst_caps_is_fixed(caps))
@@ -383,12 +392,13 @@ GstFlowReturn GstSinkWidget::newBuffer()
     if (!m_element || m_frameWidth < 0 || m_frameHeight < 0)
     {
         qDebug() << "GstSinkWidget: Unexpected newBuffer";
-        return GST_FLOW_UNEXPECTED;
+        return GST_FLOW_EOS;
     }
 
-    GstBuffer *buffer = gst_app_sink_pull_buffer(m_element);
+    GstSample *sample = gst_app_sink_pull_sample(m_element);
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
     if (!buffer)
-        return GST_FLOW_UNEXPECTED;
+        return GST_FLOW_EOS;
 
     updateFrame(buffer);
     gst_buffer_unref(buffer);

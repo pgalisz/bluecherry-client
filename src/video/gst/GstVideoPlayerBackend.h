@@ -93,14 +93,14 @@ private:
     void enableFactory(const gchar *name, gboolean enable);
 
     GstBusSyncReply busHandler(GstBus *bus, GstMessage *msg);
-    void decodeAudioPadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast);
-    void decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast);
+    void decodeAudioPadReady(GstDecodeBin *bin, GstPad *pad);
+    void decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad);
     void demuxerPadReady(GstElement *element, GstPad *pad);
     void demuxerNoMorePads(GstElement *demux);
 
     static GstBusSyncReply staticBusHandler(GstBus *bus, GstMessage *msg, gpointer data);
-    static void staticVideoDecodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data);
-    static void staticAudioDecodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data);
+    static void staticVideoDecodePadReady(GstDecodeBin *bin, GstPad *pad, gpointer user_data);
+    static void staticAudioDecodePadReady(GstDecodeBin *bin, GstPad *pad, gpointer user_data);
     static void staticDemuxerPadReady(GstElement *element, GstPad *pad, gpointer data);
     static void staticDemuxerNoMorePads(GstElement *demux, gpointer user_data);
 

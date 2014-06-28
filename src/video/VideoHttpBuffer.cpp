@@ -156,16 +156,21 @@ void VideoHttpBuffer::needData(int size)
 
     /* Refactor to use gst_pad_alloc_buffer? Probably wouldn't provide any benefit. */
     GstBuffer *buffer = gst_buffer_new_and_alloc(size);
+    buffer = gst_buffer_make_writable (buffer);
 
-    int re = media->read(media->readPosition(), (char*)GST_BUFFER_DATA(buffer), size);
+    GstMapInfo map;
+    gst_buffer_map (buffer, &map, GST_MAP_WRITE);
+    int re = media->read(media->readPosition(), (char*)map.data, size);
     if (re < 0)
     {
+        gst_buffer_unmap(buffer,&map);
         /* Error reporting is handled by MediaDownload for this case */
         qDebug() << "VideoHttpBuffer: read error";
         return;
     }
     else if (re == 0)
     {
+        gst_buffer_unmap (buffer,&map);
         if (media->readPosition() >= media->fileSize() && media->isFinished())
         {
             qDebug() << "VideoHttpBuffer: end of stream";
@@ -175,8 +180,9 @@ void VideoHttpBuffer::needData(int size)
             qDebug() << "VideoHttpBuffer: read aborted";
         return;
     }
-
-    GST_BUFFER_SIZE(buffer) = re;
+    map.size = re;
+    gst_buffer_unmap (buffer,&map);
+//    GST_BUFFER_SIZE(buffer) = re;
 
     GstFlowReturn flow = gst_app_src_push_buffer(m_element, buffer);
     if (flow != GST_FLOW_OK)

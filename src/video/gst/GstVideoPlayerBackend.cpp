@@ -77,16 +77,16 @@ GstBusSyncReply GstVideoPlayerBackend::staticBusHandler(GstBus *bus, GstMessage 
     return ((GstVideoPlayerBackend*)data)->busHandler(bus, msg);
 }
 
-void GstVideoPlayerBackend::staticVideoDecodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data)
+void GstVideoPlayerBackend::staticVideoDecodePadReady(GstDecodeBin *bin, GstPad *pad, gpointer user_data)
 {
     Q_ASSERT(user_data);
-    static_cast<GstVideoPlayerBackend*>(user_data)->decodeVideoPadReady(bin, pad, islast);
+    static_cast<GstVideoPlayerBackend*>(user_data)->decodeVideoPadReady(bin, pad);
 }
 
-void GstVideoPlayerBackend::staticAudioDecodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data)
+void GstVideoPlayerBackend::staticAudioDecodePadReady(GstDecodeBin *bin, GstPad *pad, gpointer user_data)
 {
     Q_ASSERT(user_data);
-    static_cast<GstVideoPlayerBackend*>(user_data)->decodeAudioPadReady(bin, pad, islast);
+    static_cast<GstVideoPlayerBackend*>(user_data)->decodeAudioPadReady(bin, pad);
 }
 
 void GstVideoPlayerBackend::staticDemuxerPadReady(GstElement *element, GstPad *pad, gpointer user_data)
@@ -116,7 +116,7 @@ void GstVideoPlayerBackend::setSink(GstElement *sink)
 
 void GstVideoPlayerBackend::enableFactory(const gchar *name, gboolean enable)
 {
-    GstRegistry *registry = gst_registry_get_default();
+    GstRegistry *registry = gst_registry_get();
     if (!registry)
         return;
 
@@ -192,7 +192,7 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
     Q_ASSERT(bus);
     gst_bus_enable_sync_message_emission(bus);
-    gst_bus_set_sync_handler(bus, staticBusHandler, this);
+    gst_bus_set_sync_handler(bus, staticBusHandler, this, NULL);
     gst_object_unref(bus);
 
     /* Move the pipeline into the PLAYING state. This call may block for a very long time
@@ -204,7 +204,7 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
 bool GstVideoPlayerBackend::setupVideoPipeline()
 {
     /* Decoder */
-    GstElement *videoDecoder = gst_element_factory_make("decodebin2", "videoDecoder");
+    GstElement *videoDecoder = gst_element_factory_make("decodebin", "videoDecoder");
     if (!videoDecoder)
     {
         setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("videoDecoder")));
@@ -216,7 +216,7 @@ bool GstVideoPlayerBackend::setupVideoPipeline()
                  "max-size-time", 10 * GST_SECOND,
                  NULL);
 
-    g_signal_connect(videoDecoder, "new-decoded-pad", G_CALLBACK(staticVideoDecodePadReady), this);
+    g_signal_connect(videoDecoder, "pad-added", G_CALLBACK(staticVideoDecodePadReady), this);
 
 
     GstElement *videoQueue = gst_element_factory_make ("queue", "videoQueue");
@@ -227,7 +227,7 @@ bool GstVideoPlayerBackend::setupVideoPipeline()
     }
 
     /* Colorspace conversion (no-op if unnecessary) */
-    GstElement *colorspace = gst_element_factory_make("ffmpegcolorspace", "colorspace");
+    GstElement *colorspace = gst_element_factory_make("videoconvert", "colorspace");
     if (!colorspace)
     {
         setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("colorspace")));
@@ -258,7 +258,7 @@ bool GstVideoPlayerBackend::setupVideoPipeline()
 
 bool GstVideoPlayerBackend::setupAudioPipeline()
 {
-    GstElement *audioDecoder = gst_element_factory_make("decodebin2", "audiodecoder");
+    GstElement *audioDecoder = gst_element_factory_make("decodebin", "audiodecoder");
     if (!audioDecoder)
     {
         setError(true, tr("Failed to create audio pipeline (%1)").arg(QLatin1String("audiodecoder")));
@@ -270,7 +270,7 @@ bool GstVideoPlayerBackend::setupAudioPipeline()
                  "max-size-time", 10 * GST_SECOND,
                  NULL);
 
-    g_signal_connect(audioDecoder, "new-decoded-pad", G_CALLBACK(staticAudioDecodePadReady), this);
+    g_signal_connect(audioDecoder, "pad-added", G_CALLBACK(staticAudioDecodePadReady), this);
 
 
     GstElement *audioQueue = gst_element_factory_make ("queue", "audioQueue");
@@ -468,7 +468,7 @@ qint64 GstVideoPlayerBackend::duration() const
     {
         GstFormat fmt = GST_FORMAT_TIME;
         gint64 re = 0;
-        if (gst_element_query_duration(m_pipeline, &fmt, &re))
+        if (gst_element_query_duration(m_pipeline, fmt, &re))
             return re;
     }
 
@@ -486,7 +486,7 @@ qint64 GstVideoPlayerBackend::position() const
 
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
-    if (!gst_element_query_position(m_pipeline, &fmt, &re))
+    if (!gst_element_query_position(m_pipeline, fmt, &re))
         re = -1;
     return re;
 }
@@ -571,12 +571,10 @@ bool GstVideoPlayerBackend::setSpeed(double speed)
     return re ? true : false;
 }
 
-void GstVideoPlayerBackend::decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast)
+void GstVideoPlayerBackend::decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad)
 {
-    Q_UNUSED(islast);
-
     /* TODO: Better cap detection */
-    GstCaps *caps = gst_pad_get_caps_reffed(pad);
+    GstCaps *caps = gst_pad_query_caps(pad, NULL);
     Q_ASSERT(caps);
     gchar *capsstr = gst_caps_to_string(caps);
     gst_caps_unref(caps);
@@ -594,12 +592,10 @@ void GstVideoPlayerBackend::decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad, 
     g_free(capsstr);
 }
 
-void GstVideoPlayerBackend::decodeAudioPadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast)
+void GstVideoPlayerBackend::decodeAudioPadReady(GstDecodeBin *bin, GstPad *pad)
 {
-    Q_UNUSED(islast);
-
     /* TODO: Better cap detection */
-    GstCaps *caps = gst_pad_get_caps_reffed(pad);
+    GstCaps *caps = gst_pad_query_caps(pad, NULL);
     Q_ASSERT(caps);
     gchar *capsstr = gst_caps_to_string(caps);
     gst_caps_unref(caps);

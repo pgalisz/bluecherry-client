@@ -15,25 +15,35 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-find_package (GStreamer-0.10 0.10.0 REQUIRED)
-include_directories (${GSTREAMER_0_10_INCLUDE_DIRS})
+include(cmake/FindGStreamer.cmake)
+include(cmake/FindGLIB.cmake)
+
+SET(GSTREAMER_COMPONENTS app)
+SET(GLIB_COMPONENTS gobject)
+
+FIND_PACKAGE(GStreamer 1.0.0 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS} REQUIRED)
+FIND_PACKAGE(GLIB 2.31.8 REQUIRED COMPONENTS ${GLIB_COMPONENTS})
+
+include_directories (${GSTREAMER_INCLUDE_DIRS})
+include_directories (${GLIB_INCLUDE_DIRS})
 
 list (APPEND bluecherry_client_LIBRARIES
-    ${GSTREAMER_0_10_LIBRARIES}
+    ${GSTREAMER_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${GLIB_GOBJECT_LIBRARIES}
 )
 
 if (UNIX AND NOT APPLE)
-    find_package (GStreamerApp-0.10 0.10.0 REQUIRED)
-    include_directories (${GSTREAMERAPP_0_10_INCLUDE_DIRS})
+    include_directories (${GSTREAMER_APP_INCLUDE_DIRS})
 
     list (APPEND bluecherry_client_LIBRARIES
-        ${GSTREAMERAPP_0_10_LIBRARIES}
+        ${GSTREAMER_APP_LIBRARIES}
     )
 
     set (GSTREAMER_PLUGIN_PATHS "${GSTREAMER_PLUGIN_PATHS}")
     set (GSTREAMER_PLUGIN_PREFIX "lib")
     set (GSTREAMER_PLUGIN_SUFFIX ".so")
-    set (GSTREAMER_PLUGINS "gsttypefindfunctions:gstapp:gstdecodebin2:gstmatroska:gstffmpegcolorspace:gstcoreelements:gstffmpeg")
+    set (GSTREAMER_PLUGINS "gsttypefindfunctions:gstapp:gstdecodebin:gstmatroska:gstffmpegcolorspace:gstcoreelements:gstffmpeg")
 
 endif (UNIX AND NOT APPLE)
 
