@@ -116,7 +116,7 @@ void GstVideoPlayerBackend::setSink(GstElement *sink)
 
 void GstVideoPlayerBackend::enableFactory(const gchar *name, gboolean enable)
 {
-    GstRegistry *registry = gst_registry_get_default();
+    GstRegistry *registry = gst_registry_get();
     if (!registry)
         return;
 
@@ -192,7 +192,7 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
     Q_ASSERT(bus);
     gst_bus_enable_sync_message_emission(bus);
-    gst_bus_set_sync_handler(bus, staticBusHandler, this);
+    gst_bus_set_sync_handler(bus, staticBusHandler, this, NULL);
     gst_object_unref(bus);
 
     /* Move the pipeline into the PLAYING state. This call may block for a very long time
@@ -204,7 +204,7 @@ bool GstVideoPlayerBackend::start(const QUrl &url)
 bool GstVideoPlayerBackend::setupVideoPipeline()
 {
     /* Decoder */
-    GstElement *videoDecoder = gst_element_factory_make("decodebin2", "videoDecoder");
+    GstElement *videoDecoder = gst_element_factory_make("decodebin", "videoDecoder");
     if (!videoDecoder)
     {
         setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("videoDecoder")));
@@ -468,7 +468,7 @@ qint64 GstVideoPlayerBackend::duration() const
     {
         GstFormat fmt = GST_FORMAT_TIME;
         gint64 re = 0;
-        if (gst_element_query_duration(m_pipeline, &fmt, &re))
+        if (gst_element_query_duration(m_pipeline, fmt, &re))
             return re;
     }
 
@@ -486,7 +486,7 @@ qint64 GstVideoPlayerBackend::position() const
 
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
-    if (!gst_element_query_position(m_pipeline, &fmt, &re))
+    if (!gst_element_query_position(m_pipeline, fmt, &re))
         re = -1;
     return re;
 }
@@ -576,7 +576,7 @@ void GstVideoPlayerBackend::decodeVideoPadReady(GstDecodeBin *bin, GstPad *pad, 
     Q_UNUSED(islast);
 
     /* TODO: Better cap detection */
-    GstCaps *caps = gst_pad_get_caps_reffed(pad);
+    GstCaps *caps = gst_pad_query_caps(pad, NULL);
     Q_ASSERT(caps);
     gchar *capsstr = gst_caps_to_string(caps);
     gst_caps_unref(caps);
@@ -599,7 +599,7 @@ void GstVideoPlayerBackend::decodeAudioPadReady(GstDecodeBin *bin, GstPad *pad, 
     Q_UNUSED(islast);
 
     /* TODO: Better cap detection */
-    GstCaps *caps = gst_pad_get_caps_reffed(pad);
+    GstCaps *caps = gst_pad_query_caps(pad, NULL);
     Q_ASSERT(caps);
     gchar *capsstr = gst_caps_to_string(caps);
     gst_caps_unref(caps);

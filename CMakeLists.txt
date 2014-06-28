@@ -58,6 +58,8 @@ endif (EXISTS ${CMAKE_SOURCE_DIR}/user.cmake)
 set (bluecherry_client_SRCS "")
 set (bluecherry_client_LIBRARIES "")
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 include (cmake/version.cmake)
 include (cmake/sources.cmake)
 

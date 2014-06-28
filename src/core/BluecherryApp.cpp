@@ -131,6 +131,8 @@ void BluecherryApp::registerGstPluginLoader()
 {
     m_gstPluginLoader.reset(new GstPluginLoader());
 
+
+    qDebug("SSSSSSSSSSSSSSS %s", GSTREAMER_PLUGIN_PATHS);
     QStringList paths = QString::fromLatin1(GSTREAMER_PLUGIN_PATHS).split(QChar::fromAscii(':'), QString::SkipEmptyParts);
 
     m_gstPluginLoader.data()->setPaths(absolutePaths(paths));
@@ -148,11 +150,13 @@ QStringList BluecherryApp::absolutePaths(const QStringList& paths)
     QStringList result;
 
     foreach (const QString &path, paths)
+    {
+        qDebug("p1 %s", qPrintable(path));
         if (path.startsWith(QLatin1String("./")))
             result.append(QString::fromAscii("%1/%2").arg(QApplication::applicationDirPath()).arg(path));
         else
             result.append(path);
-
+    }
     return result;
 }
 
